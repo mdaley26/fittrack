@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 
   const where: Record<string, unknown> = {};
   if (q) {
-    where.name = { contains: q };
+    where.name = { contains: q, mode: "insensitive" };
   }
   if (muscleGroup) where.muscleGroup = muscleGroup;
   if (equipment) where.equipment = equipment;
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     const existing = await prisma.exercise.findFirst({
-      where: { name: parsed.data.name },
+      where: { name: { equals: parsed.data.name, mode: "insensitive" } },
     });
     if (existing) {
       return NextResponse.json(
