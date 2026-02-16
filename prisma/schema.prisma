@@ -1,0 +1,62 @@
+// Fitness Tracker - Prisma schema
+// Use PostgreSQL in production; SQLite for local dev (change provider + url)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  age          Int?
+  weight       Float?
+  height       Float?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  workouts Workout[]
+}
+
+model Exercise {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  muscleGroup String?  @map("muscle_group")
+  equipment   String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  workoutExercises WorkoutExercise[]
+}
+
+model Workout {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  date      DateTime
+  name      String?
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercises WorkoutExercise[]
+}
+
+model WorkoutExercise {
+  id         String   @id @default(uuid())
+  workoutId  String   @map("workout_id")
+  exerciseId String   @map("exercise_id")
+  sets       Int?
+  reps       Int?
+  weight     Float?
+  duration   Int?     // seconds, for cardio
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  workout  Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+}
