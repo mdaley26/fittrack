@@ -21,6 +21,11 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
+  // Subscription (Stripe)
+  subscriptionStatus   String?   @map("subscription_status")   // "active" | "canceled" | "past_due" | null = free
+  stripeCustomerId     String?   @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?   @map("stripe_subscription_id")
+
   workouts Workout[]
   templates WorkoutTemplate[]
 }

@@ -38,8 +38,9 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-12">
-      <h1 className="mb-8 text-2xl font-bold text-white">Log in</h1>
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="rounded-2xl border border-slate-700 bg-slate-900/80 p-8 shadow-xl">
+        <h1 className="mb-8 text-2xl font-bold text-white">Log in</h1>
+        <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-300">
             Email
@@ -87,7 +88,8 @@ export default function LoginPage() {
         <Link href="/register" className="text-brand-400 hover:underline">
           Sign up
         </Link>
-      </p>
+        </p>
+      </div>
     </div>
   );
 }

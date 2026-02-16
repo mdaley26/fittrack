@@ -1,8 +1,41 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "./AuthProvider";
+
+function UpgradeButton() {
+  const [loading, setLoading] = useState(false);
+  const { setUser } = useAuth();
+
+  const handleUpgrade = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/subscribe/checkout", { method: "POST" });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else if (data.code === "ALREADY_PRO") {
+        const me = await fetch("/api/auth/me").then((r) => (r.ok ? r.json() : null));
+        if (me?.user) setUser(me.user);
+        setLoading(false);
+      } else setLoading(false);
+    } catch {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleUpgrade}
+      disabled={loading}
+      className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-medium text-slate-900 hover:bg-amber-400 disabled:opacity-70"
+    >
+      {loading ? "…" : "Upgrade to Pro"}
+    </button>
+  );
+}
 
 const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
@@ -74,6 +107,9 @@ export function Nav() {
               {label}
             </Link>
           ))}
+          {user.subscriptionStatus !== "active" && (
+            <UpgradeButton />
+          )}
           <button
             type="button"
             onClick={logout}

@@ -59,11 +59,50 @@ export async function clearSession(): Promise<void> {
   cookieStore.delete(COOKIE_NAME);
 }
 
+export type CurrentUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
+
+/** True if user has an active paid subscription. */
+export function hasActiveSubscription(user: NonNullable<CurrentUser>): boolean {
+  return user.subscriptionStatus === "active";
+}
+
 export async function getCurrentUser() {
   const session = await getSession();
   if (!session) return null;
   return prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, email: true, age: true, weight: true, height: true, weightUnit: true, createdAt: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      age: true,
+      weight: true,
+      height: true,
+      weightUnit: true,
+      createdAt: true,
+      subscriptionStatus: true,
+    },
   });
+}
+
+/**
+ * Use in API routes that require a paid subscription.
+ * Returns the user if subscribed; otherwise returns 402 with upgrade message.
+ */
+export async function requireSubscription(): Promise<
+  { user: NonNullable<CurrentUser> } | { response: Response }
+> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { response: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } }) };
+  }
+  if (!hasActiveSubscription(user)) {
+    return {
+      response: new Response(
+        JSON.stringify({ error: "Subscription required", code: "SUBSCRIPTION_REQUIRED" }),
+        { status: 402, headers: { "Content-Type": "application/json" } }
+      ),
+    };
+  }
+  return { user };
 }

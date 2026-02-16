@@ -32,13 +32,21 @@ export async function POST(req: Request) {
     }
 
     await setSession({ userId: user.id, email: user.email });
-    return NextResponse.json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
+    const currentUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        age: true,
+        weight: true,
+        height: true,
+        weightUnit: true,
+        createdAt: true,
+        subscriptionStatus: true,
       },
     });
+    return NextResponse.json({ user: currentUser });
   } catch (e) {
     console.error(e);
     return NextResponse.json(

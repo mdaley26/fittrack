@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { requireSubscription } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
-// Get progress over time for a specific exercise (for charts)
+// Get progress over time for a specific exercise (for charts) — premium feature
 export async function GET(req: Request) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const result = await requireSubscription();
+  if ("response" in result) return result.response;
+  const { user } = result;
   const { searchParams } = new URL(req.url);
   const exerciseId = searchParams.get("exerciseId");
   if (!exerciseId) {
@@ -30,11 +29,8 @@ export async function GET(req: Request) {
     orderBy: { workout: { date: "asc" } },
   });
 
-  const byDate = new Map<
-    string,
-    { date: string; weight: number; reps: number; volume: number; sets: number }
-  >();
-  for (const e of entries) {
+  // One data point per workout (not merged by day), so each squat session shows separately
+  const data = entries.map((e) => {
     const dateStr = e.workout.date.toISOString().slice(0, 10);
     let weight = 0;
     let reps = 0;
@@ -54,26 +50,8 @@ export async function GET(req: Request) {
       volume = weight * reps;
     }
     const sets = setCount || (e.sets ?? 1);
-    const existing = byDate.get(dateStr);
-    if (existing) {
-      existing.weight = Math.max(existing.weight, weight);
-      existing.reps += reps;
-      existing.volume += volume;
-      existing.sets += sets;
-    } else {
-      byDate.set(dateStr, {
-        date: dateStr,
-        weight,
-        reps,
-        volume,
-        sets,
-      });
-    }
-  }
-
-  const data = Array.from(byDate.values()).sort(
-    (a, b) => a.date.localeCompare(b.date)
-  );
+    return { date: dateStr, weight, reps, volume, sets };
+  });
   const exerciseName = entries[0]?.exercise.name ?? "Exercise";
 
   return NextResponse.json({

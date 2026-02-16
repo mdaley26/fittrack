@@ -10,6 +10,7 @@ type User = {
   weight?: number | null;
   height?: number | null;
   createdAt?: string;
+  subscriptionStatus?: string | null;
 } | null;
 
 type AuthContextType = {

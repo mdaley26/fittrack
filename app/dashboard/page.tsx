@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { DashboardBanner } from "@/components/DashboardBanner";
 import { DashboardStats } from "@/components/DashboardStats";
 import { RecentWorkouts } from "@/components/RecentWorkouts";
 
@@ -30,6 +32,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
+      <Suspense fallback={null}>
+        <DashboardBanner />
+      </Suspense>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-white">
           Hey, {user.name.split(" ")[0]} 👋
