@@ -467,44 +467,42 @@ export function WorkoutForm({
                     </tbody>
                   </table>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-3">
+                <div className="mt-3 flex flex-wrap items-end gap-4">
                   <button
                     type="button"
                     onClick={() => addSet(i)}
-                    className="text-sm text-brand-400 hover:text-brand-300"
+                    className="pb-1.5 text-sm text-brand-400 hover:text-brand-300"
                   >
                     + Add set
                   </button>
-                  <div className="flex gap-3">
-                    <div>
-                      <label className="mr-1 text-xs text-slate-500">Duration (sec)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={ex.duration ?? ""}
-                        onChange={(e) =>
-                          updateExercise(
-                            i,
-                            "duration",
-                            e.target.value === ""
-                              ? null
-                              : parseInt(e.target.value, 10)
-                          )}
-                        className="w-20 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-white"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="mr-1 text-xs text-slate-500">Notes</label>
-                      <input
-                        type="text"
-                        value={ex.notes ?? ""}
-                        onChange={(e) =>
-                          updateExercise(i, "notes", e.target.value || null)
-                        }
-                        placeholder="Optional"
-                        className="w-full rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-white placeholder-slate-500"
-                      />
-                    </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-slate-500">Duration (sec)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={ex.duration ?? ""}
+                      onChange={(e) =>
+                        updateExercise(
+                          i,
+                          "duration",
+                          e.target.value === ""
+                            ? null
+                            : parseInt(e.target.value, 10)
+                        )}
+                      className="w-24 rounded border border-slate-600 bg-slate-800 px-2 py-1.5 text-sm text-white"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1 flex flex-col gap-1">
+                    <label className="text-xs text-slate-500">Notes</label>
+                    <input
+                      type="text"
+                      value={ex.notes ?? ""}
+                      onChange={(e) =>
+                        updateExercise(i, "notes", e.target.value || null)
+                      }
+                      placeholder="Optional"
+                      className="w-full rounded border border-slate-600 bg-slate-800 px-2 py-1.5 text-sm text-white placeholder-slate-500"
+                    />
                   </div>
                 </div>
               </div>
