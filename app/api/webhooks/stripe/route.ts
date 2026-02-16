@@ -6,6 +6,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 export async function POST(req: Request) {
+  // #region agent log — confirm request reaches handler (check Vercel logs); if missing, 307 is before this
+  console.log("[Stripe webhook] POST received", { url: req.url, hasSignature: !!req.headers.get("stripe-signature") });
+  // #endregion
   if (!webhookSecret) {
     console.error("STRIPE_WEBHOOK_SECRET is not set");
     return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
