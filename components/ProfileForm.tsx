@@ -10,6 +10,7 @@ type User = {
   age: number | null;
   weight: number | null;
   height: number | null;
+  weightUnit?: string | null;
 };
 
 export function ProfileForm({ user }: { user: User }) {
@@ -18,6 +19,9 @@ export function ProfileForm({ user }: { user: User }) {
   const [age, setAge] = useState(user.age ?? "");
   const [weight, setWeight] = useState(user.weight ?? "");
   const [height, setHeight] = useState(user.height ?? "");
+  const [weightUnit, setWeightUnit] = useState<"kg" | "lb">(
+    (user.weightUnit as "kg" | "lb") || "kg"
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<Record<string, string[]>>({});
 
@@ -34,6 +38,7 @@ export function ProfileForm({ user }: { user: User }) {
           age: age === "" ? null : Number(age),
           weight: weight === "" ? null : Number(weight),
           height: height === "" ? null : Number(height),
+          weightUnit,
         }),
       });
       const data = await res.json();
@@ -88,7 +93,7 @@ export function ProfileForm({ user }: { user: User }) {
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-300">
-            Weight (kg)
+            Body weight ({weightUnit})
           </label>
           <input
             type="number"
@@ -112,6 +117,22 @@ export function ProfileForm({ user }: { user: User }) {
             className="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-white focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
         </div>
+      </div>
+      <div>
+        <label className="mb-1 block text-sm font-medium text-slate-300">
+          Weight unit (for exercises)
+        </label>
+        <select
+          value={weightUnit}
+          onChange={(e) => setWeightUnit(e.target.value as "kg" | "lb")}
+          className="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-white focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+        >
+          <option value="kg">Kilograms (kg)</option>
+          <option value="lb">Pounds (lb)</option>
+        </select>
+        <p className="mt-1 text-xs text-slate-500">
+          Used when logging workout weight (e.g. barbell, dumbbell).
+        </p>
       </div>
       <button
         type="submit"

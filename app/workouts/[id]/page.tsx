@@ -17,7 +17,9 @@ export default async function WorkoutDetailPage({
   const workout = await prisma.workout.findFirst({
     where: { id, userId: user.id },
     include: {
-      exercises: { include: { exercise: true } },
+      exercises: {
+        include: { exercise: true, setRows: { orderBy: { setNumber: "asc" } } },
+      },
     },
   });
   if (!workout) notFound();
@@ -36,7 +38,7 @@ export default async function WorkoutDetailPage({
         {workout.name || "Workout"} –{" "}
         {new Date(workout.date).toLocaleDateString("en-US")}
       </h1>
-      <WorkoutForm workout={workout} />
+      <WorkoutForm workout={workout} weightUnit={(user.weightUnit as "kg" | "lb") ?? "kg"} />
       {workout.exercises.length > 0 && (
         <div className="mt-12 space-y-8">
           {workout.exercises.map((we) => (

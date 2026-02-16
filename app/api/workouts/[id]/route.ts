@@ -16,7 +16,9 @@ export async function GET(
   const workout = await prisma.workout.findFirst({
     where: { id, userId: user.id },
     include: {
-      exercises: { include: { exercise: true } },
+      exercises: {
+        include: { exercise: true, setRows: { orderBy: { setNumber: "asc" } } },
+      },
     },
   });
   if (!workout) {
@@ -70,17 +72,37 @@ export async function PATCH(
       for (const ex of exercisesData) {
         const parsed = workoutExerciseSchema.safeParse(ex);
         if (parsed.success) {
-          await prisma.workoutExercise.create({
+          const setRows = parsed.data.setRows ?? [];
+          const aggSets = setRows.length;
+          const aggWeight =
+            aggSets > 0
+              ? Math.max(...setRows.map((r) => r.weight ?? 0))
+              : parsed.data.weight ?? undefined;
+          const aggReps =
+            aggSets > 0
+              ? setRows.reduce((s, r) => s + (r.reps ?? 0), 0)
+              : parsed.data.reps ?? undefined;
+          const we = await prisma.workoutExercise.create({
             data: {
               workoutId: id,
               exerciseId: parsed.data.exerciseId,
-              sets: parsed.data.sets ?? undefined,
-              reps: parsed.data.reps ?? undefined,
-              weight: parsed.data.weight ?? undefined,
+              sets: aggSets || (parsed.data.sets ?? undefined),
+              reps: aggReps ?? parsed.data.reps ?? undefined,
+              weight: aggWeight ?? parsed.data.weight ?? undefined,
               duration: parsed.data.duration ?? undefined,
               notes: parsed.data.notes ?? undefined,
             },
           });
+          if (setRows.length) {
+            await prisma.workoutSet.createMany({
+              data: setRows.map((row) => ({
+                workoutExerciseId: we.id,
+                setNumber: row.setNumber,
+                weight: row.weight ?? undefined,
+                reps: row.reps ?? undefined,
+              })),
+            });
+          }
         }
       }
     }
@@ -88,7 +110,9 @@ export async function PATCH(
     const updated = await prisma.workout.findUnique({
       where: { id },
       include: {
-        exercises: { include: { exercise: true } },
+        exercises: {
+          include: { exercise: true, setRows: { orderBy: { setNumber: "asc" } } },
+        },
       },
     });
     return NextResponse.json({ workout: updated });

@@ -25,6 +25,7 @@ export async function GET(req: Request) {
     include: {
       workout: { select: { date: true } },
       exercise: { select: { name: true } },
+      setRows: true,
     },
     orderBy: { workout: { date: "asc" } },
   });
@@ -35,21 +36,35 @@ export async function GET(req: Request) {
   >();
   for (const e of entries) {
     const dateStr = e.workout.date.toISOString().slice(0, 10);
-    const weight = e.weight ?? 0;
-    const reps = e.reps ?? 0;
-    const sets = e.sets ?? 1;
-    const volume = weight * reps * sets;
+    let weight = 0;
+    let reps = 0;
+    let volume = 0;
+    const setCount = e.setRows?.length ?? 0;
+    if (setCount > 0 && e.setRows) {
+      for (const row of e.setRows) {
+        const w = row.weight ?? 0;
+        const r = row.reps ?? 0;
+        weight = Math.max(weight, w);
+        reps += r;
+        volume += w * r;
+      }
+    } else {
+      weight = e.weight ?? 0;
+      reps = (e.reps ?? 0) * (e.sets ?? 1);
+      volume = weight * reps;
+    }
+    const sets = setCount || (e.sets ?? 1);
     const existing = byDate.get(dateStr);
     if (existing) {
       existing.weight = Math.max(existing.weight, weight);
-      existing.reps += reps * sets;
+      existing.reps += reps;
       existing.volume += volume;
       existing.sets += sets;
     } else {
       byDate.set(dateStr, {
         date: dateStr,
-        weight: weight,
-        reps: reps * sets,
+        weight,
+        reps,
         volume,
         sets,
       });

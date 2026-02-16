@@ -16,12 +16,19 @@ export const profileSchema = z.object({
   age: z.coerce.number().int().min(1).max(150).optional().nullable(),
   weight: z.coerce.number().min(0).max(500).optional().nullable(),
   height: z.coerce.number().min(0).max(300).optional().nullable(),
+  weightUnit: z.enum(["kg", "lb"]).optional(),
 });
 
 export const workoutSchema = z.object({
   date: z.string().min(1, "Date is required"),
   name: z.string().max(200).optional(),
   notes: z.string().max(2000).optional(),
+});
+
+export const workoutSetSchema = z.object({
+  setNumber: z.coerce.number().int().min(1),
+  weight: z.coerce.number().min(0).optional().nullable(),
+  reps: z.coerce.number().int().min(0).optional().nullable(),
 });
 
 export const workoutExerciseSchema = z.object({
@@ -31,6 +38,7 @@ export const workoutExerciseSchema = z.object({
   weight: z.coerce.number().min(0).optional().nullable(),
   duration: z.coerce.number().int().min(0).optional().nullable(),
   notes: z.string().max(500).optional(),
+  setRows: z.array(workoutSetSchema).optional(),
 });
 
 export const customExerciseSchema = z.object({
