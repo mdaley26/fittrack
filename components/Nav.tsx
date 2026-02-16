@@ -7,6 +7,7 @@ import { useAuth } from "./AuthProvider";
 const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/workouts", label: "Workouts" },
+  { href: "/templates", label: "Templates" },
   { href: "/exercises", label: "Exercises" },
   { href: "/profile", label: "Profile" },
 ];

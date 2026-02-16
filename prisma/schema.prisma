@@ -22,6 +22,7 @@ model User {
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   workouts Workout[]
+  templates WorkoutTemplate[]
 }
 
 model Exercise {
@@ -32,7 +33,8 @@ model Exercise {
   equipment   String?
   createdAt   DateTime @default(now()) @map("created_at")
 
-  workoutExercises WorkoutExercise[]
+  workoutExercises     WorkoutExercise[]
+  templateExercises    WorkoutTemplateExercise[]
 }
 
 model Workout {
@@ -72,4 +74,26 @@ model WorkoutSet {
   createdAt         DateTime @default(now()) @map("created_at")
 
   workoutExercise WorkoutExercise @relation(fields: [workoutExerciseId], references: [id], onDelete: Cascade)
+}
+
+model WorkoutTemplate {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercises WorkoutTemplateExercise[]
+}
+
+model WorkoutTemplateExercise {
+  id           String   @id @default(uuid())
+  templateId   String   @map("template_id")
+  exerciseId   String   @map("exercise_id")
+  orderIndex   Int      @map("order_index")
+  defaultSets  Int      @default(1) @map("default_sets")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  template WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  exercise Exercise         @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 }

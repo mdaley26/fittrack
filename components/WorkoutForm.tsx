@@ -28,13 +28,20 @@ type Workout = {
   exercises: WorkoutExercise[];
 };
 
+type SetRowState = {
+  setNumber: number;
+  weight: number | null;
+  reps: number | null;
+  completed: boolean;
+};
+
 type ExerciseState = {
   exerciseId: string;
   exerciseName: string;
   duration: number | null;
   notes: string | null;
-  setRows: Array<{ setNumber: number; weight: number | null; reps: number | null }>;
-  previousSets: SetRow[]; // last time's sets for "Previous" column
+  setRows: SetRowState[];
+  previousSets: SetRow[];
 };
 
 function displayWeight(kg: number | null, unit: "kg" | "lb"): string {
@@ -51,9 +58,11 @@ function inputToKg(value: string, unit: "kg" | "lb"): number | null {
 export function WorkoutForm({
   workout,
   weightUnit = "kg",
+  templateId,
 }: {
   workout?: Workout;
   weightUnit?: "kg" | "lb";
+  templateId?: string;
 }) {
   const router = useRouter();
   const isEdit = !!workout;
@@ -76,6 +85,7 @@ export function WorkoutForm({
             setNumber: s.setNumber,
             weight: s.weight,
             reps: s.reps,
+            completed: true,
           })),
           previousSets: [],
         };
@@ -90,16 +100,19 @@ export function WorkoutForm({
           setNumber: i + 1,
           weight: e.weight,
           reps: e.reps,
+          completed: true,
         })),
         previousSets: [],
       };
     }) ?? []
   );
+  const [templateLoaded, setTemplateLoaded] = useState(!templateId);
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [exerciseResults, setExerciseResults] = useState<Exercise[]>([]);
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [uncheckedModal, setUncheckedModal] = useState<"autocomplete" | "discard" | null>(null);
 
   useEffect(() => {
     if (!exerciseSearch.trim()) {
@@ -122,6 +135,70 @@ export function WorkoutForm({
     }, 200);
     return () => clearTimeout(t);
   }, [exerciseSearch]);
+
+  // Load template when templateId is provided (new workout from template)
+  useEffect(() => {
+    if (!templateId || templateLoaded) return;
+    let cancelled = false;
+    fetch(`/api/templates/${templateId}`)
+      .then((r) => r.json())
+      .then(async (data) => {
+        if (cancelled || !data.template?.exercises?.length) {
+          setTemplateLoaded(true);
+          return;
+        }
+        const templateExercises = data.template.exercises as Array<{
+          exerciseId: string;
+          exercise: { name: string };
+          defaultSets: number;
+        }>;
+        const newExercises: ExerciseState[] = [];
+        for (const te of templateExercises) {
+          let setRows: SetRowState[] = Array.from(
+            { length: te.defaultSets ?? 1 },
+            (_, i) => ({
+              setNumber: i + 1,
+              weight: null,
+              reps: null,
+              completed: true,
+            })
+          );
+          let previousSets: SetRow[] = [];
+          try {
+            const res = await fetch(`/api/exercises/${te.exerciseId}/previous-sets`);
+            const prevData = await res.json();
+            if (prevData.sets?.length) {
+              previousSets = prevData.sets;
+              setRows = prevData.sets.map((s: SetRow) => ({
+                setNumber: s.setNumber,
+                weight: s.weight,
+                reps: s.reps,
+                completed: true,
+              }));
+            }
+          } catch {
+            // keep default rows
+          }
+          newExercises.push({
+            exerciseId: te.exerciseId,
+            exerciseName: te.exercise.name,
+            duration: null,
+            notes: null,
+            setRows,
+            previousSets,
+          });
+        }
+        if (!cancelled) {
+          setExercises(newExercises);
+          if (data.template.name && !name.trim()) setName(data.template.name);
+        }
+        setTemplateLoaded(true);
+      })
+      .catch(() => setTemplateLoaded(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [templateId]);
 
   // When editing, fetch previous sets for each exercise so "Previous" column shows
   useEffect(() => {
@@ -151,7 +228,9 @@ export function WorkoutForm({
 
   async function addExercise(ex: Exercise) {
     if (exercises.some((e) => e.exerciseId === ex.id)) return;
-    let setRows: ExerciseState["setRows"] = [{ setNumber: 1, weight: null, reps: null }];
+    let setRows: ExerciseState["setRows"] = [
+      { setNumber: 1, weight: null, reps: null, completed: true },
+    ];
     let previousSets: SetRow[] = [];
     try {
       const url = isEdit && workout
@@ -165,7 +244,10 @@ export function WorkoutForm({
           setNumber: s.setNumber,
           weight: s.weight,
           reps: s.reps,
+          completed: true,
         }));
+      } else {
+        setRows = [{ setNumber: 1, weight: null, reps: null, completed: true }];
       }
     } catch {
       // keep default 1 row
@@ -192,9 +274,22 @@ export function WorkoutForm({
       const nextNum = ex.setRows.length + 1;
       next[exIndex] = {
         ...ex,
-        setRows: [...ex.setRows, { setNumber: nextNum, weight: null, reps: null }],
+        setRows: [
+          ...ex.setRows,
+          { setNumber: nextNum, weight: null, reps: null, completed: true },
+        ],
         previousSets: ex.previousSets,
       };
+      return next;
+    });
+  }
+
+  function updateSetCompleted(exIndex: number, setIndex: number, completed: boolean) {
+    setExercises((prev) => {
+      const next = [...prev];
+      const row = { ...next[exIndex].setRows[setIndex], completed };
+      next[exIndex].setRows = [...next[exIndex].setRows];
+      next[exIndex].setRows[setIndex] = row;
       return next;
     });
   }
@@ -206,7 +301,7 @@ export function WorkoutForm({
       const newRows = ex.setRows
         .filter((_, i) => i !== setIndex)
         .map((r, i) => ({ ...r, setNumber: i + 1 }));
-      next[exIndex] = { ...ex, setRows: newRows };
+      next[exIndex] = { ...ex, setRows: newRows, previousSets: ex.previousSets };
       return next;
     });
   }
@@ -242,27 +337,45 @@ export function WorkoutForm({
     setExercises((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  const hasUncheckedSets = exercises.some((ex) =>
+    ex.setRows.some((r) => !r.completed)
+  );
+  const uncheckedCount = exercises.reduce(
+    (acc, ex) => acc + ex.setRows.filter((r) => !r.completed).length,
+    0
+  );
+
+  async function doSubmit(
+    discardUnchecked: boolean,
+    overrideExercises?: ExerciseState[]
+  ) {
+    setUncheckedModal(null);
     setError("");
     setSaving(true);
+    const source = overrideExercises ?? exercises;
     try {
+      const exercisesPayload = source.map((ex) => {
+        const rows = discardUnchecked
+          ? ex.setRows.filter((r) => r.completed)
+          : ex.setRows;
+        return {
+          exerciseId: ex.exerciseId,
+          duration: ex.duration ?? undefined,
+          notes: ex.notes ?? undefined,
+          setRows: rows.map((r, idx) => ({
+            setNumber: idx + 1,
+            weight: r.weight ?? undefined,
+            reps: r.reps ?? undefined,
+          })),
+        };
+      });
       const payload = {
         workout: {
           date: new Date(date).toISOString().slice(0, 10),
           name: name.trim() || undefined,
           notes: notes.trim() || undefined,
         },
-        exercises: exercises.map((ex) => ({
-          exerciseId: ex.exerciseId,
-          duration: ex.duration ?? undefined,
-          notes: ex.notes ?? undefined,
-          setRows: ex.setRows.map((r) => ({
-            setNumber: r.setNumber,
-            weight: r.weight ?? undefined,
-            reps: r.reps ?? undefined,
-          })),
-        })),
+        exercises: exercisesPayload,
       };
       const url = isEdit ? `/api/workouts/${workout.id}` : "/api/workouts";
       const method = isEdit ? "PATCH" : "POST";
@@ -284,6 +397,15 @@ export function WorkoutForm({
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (hasUncheckedSets) {
+      setUncheckedModal("autocomplete");
+      return;
+    }
+    doSubmit(false);
   }
 
   async function handleDelete() {
@@ -400,6 +522,9 @@ export function WorkoutForm({
                         <th className="py-2 pr-3 font-medium">Previous</th>
                         <th className="py-2 pr-3 font-medium">Weight ({unitLabel})</th>
                         <th className="py-2 pr-3 font-medium">Reps</th>
+                        <th className="w-10 text-center font-medium" title="Completed">
+                          Done
+                        </th>
                         <th className="w-8"></th>
                       </tr>
                     </thead>
@@ -448,6 +573,17 @@ export function WorkoutForm({
                                 )
                               }
                               className="w-16 rounded border border-slate-600 bg-slate-800 px-2 py-1.5 text-white"
+                            />
+                          </td>
+                          <td className="py-2 text-center">
+                            <input
+                              type="checkbox"
+                              checked={row.completed}
+                              onChange={(e) =>
+                                updateSetCompleted(i, setIdx, e.target.checked)
+                              }
+                              title="Mark set as completed"
+                              className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-brand-600 focus:ring-brand-500"
                             />
                           </td>
                           <td className="py-2">
@@ -527,10 +663,16 @@ export function WorkoutForm({
       <div className="flex flex-wrap gap-3">
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || !templateLoaded}
           className="rounded-lg bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-500 disabled:opacity-50"
         >
-          {saving ? "Saving…" : isEdit ? "Update workout" : "Save workout"}
+          {!templateLoaded
+            ? "Loading…"
+            : saving
+              ? "Saving…"
+              : isEdit
+                ? "Update workout"
+                : "Save workout"}
         </button>
         {isEdit && (
           <button
@@ -542,6 +684,53 @@ export function WorkoutForm({
           </button>
         )}
       </div>
+
+      {uncheckedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-white">
+              Uncompleted sets
+            </h3>
+            <p className="mb-4 text-slate-400">
+              You have {uncheckedCount} set{uncheckedCount !== 1 ? "s" : ""} without
+              a checkmark. Only checked sets are saved. What do you want to do?
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() =>
+                  doSubmit(
+                    false,
+                    exercises.map((ex) => ({
+                      ...ex,
+                      setRows: ex.setRows.map((r) => ({ ...r, completed: true })),
+                    }))
+                  )
+                }
+                disabled={saving}
+                className="rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-500 disabled:opacity-50"
+              >
+                A) Mark all as completed and save
+              </button>
+              <button
+                type="button"
+                onClick={() => doSubmit(true)}
+                disabled={saving}
+                className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2.5 font-medium text-slate-200 hover:bg-slate-700 disabled:opacity-50"
+              >
+                B) Discard unchecked sets and save
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setUncheckedModal(null)}
+              className="mt-4 text-sm text-slate-500 hover:text-slate-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </form>
   );
 }
