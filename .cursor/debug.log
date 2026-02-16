@@ -1,0 +1,1 @@
+{"location":"app/api/subscribe/checkout/route.ts:success_url","message":"Checkout URL built","data":{"appOrigin":"https://fittrack-chi-six.vercel.app","successUrl":"https://fittrack-chi-six.vercel.app/dashboard?subscribed=1","cancelUrl":"https://fittrack-chi-six.vercel.app/dashboard?canceled=1"},"timestamp":1771283316867,"hypothesisId":"H1","runId":"post-fix"}

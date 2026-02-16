@@ -4,7 +4,12 @@ import { getCurrentUser, hasActiveSubscription } from "@/lib/auth";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const priceId = process.env.STRIPE_PRICE_ID;
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+let appOrigin = "http://localhost:3000";
+try {
+  if (process.env.NEXT_PUBLIC_APP_URL) appOrigin = new URL(process.env.NEXT_PUBLIC_APP_URL).origin;
+} catch {
+  // keep default
+}
 
 export async function POST() {
   if (!priceId) {
@@ -29,8 +34,8 @@ export async function POST() {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${appUrl}/dashboard?subscribed=1`,
-      cancel_url: `${appUrl}/dashboard?canceled=1`,
+      success_url: `${appOrigin}/dashboard?subscribed=1`,
+      cancel_url: `${appOrigin}/dashboard?canceled=1`,
       client_reference_id: user.id,
       customer_email: user.email,
     });
